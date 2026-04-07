@@ -11,9 +11,16 @@ const createJobSchema = {
   location: { required: true, type: 'string' },
 };
 
+// Job CRUD
 router.post('/', authenticate, authorize('client'), validate(createJobSchema), jobsController.createJob);
 router.get('/', jobsController.listJobs);
 router.get('/:id', jobsController.getJobById);
+
+// Job status management
+router.patch('/:id/complete', authenticate, jobsController.completeJob);
+router.patch('/:id/cancel', authenticate, jobsController.cancelJob);
+
+// Applications
 router.post('/:id/apply', authenticate, authorize('worker'), jobsController.applyToJob);
 router.get('/:id/applications', authenticate, jobsController.getApplications);
 router.patch('/:id/applications/:appId', authenticate, jobsController.updateApplication);
