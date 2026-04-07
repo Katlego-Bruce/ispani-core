@@ -42,6 +42,24 @@ exports.getJobById = asyncHandler(async (req, res) => {
   res.json({ data: job });
 });
 
+exports.completeJob = asyncHandler(async (req, res) => {
+  const job = await jobsService.completeJob(req.params.id, req.user.id);
+
+  res.json({
+    message: 'Job marked as completed',
+    data: job,
+  });
+});
+
+exports.cancelJob = asyncHandler(async (req, res) => {
+  const job = await jobsService.cancelJob(req.params.id, req.user.id);
+
+  res.json({
+    message: 'Job cancelled',
+    data: job,
+  });
+});
+
 exports.applyToJob = asyncHandler(async (req, res) => {
   const { message } = req.body;
 
