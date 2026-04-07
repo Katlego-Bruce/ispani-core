@@ -64,8 +64,61 @@ exports.getJobById = async (id) => {
   });
 };
 
+exports.completeJob = async (jobId, userId) => {
+  const job = await prisma.job.findUnique({ where: { id: jobId } });
+
+  if (!job) {
+    const error = new Error('Job not found');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (job.userId !== userId) {
+    const error = new Error('Only the job owner can complete this job');
+    error.statusCode = 403;
+    throw error;
+  }
+
+  if (job.status !== 'assigned') {
+    const error = new Error('Only assigned jobs can be completed');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  return prisma.job.update({
+    where: { id: jobId },
+    data: { status: 'completed' },
+  });
+};
+
+exports.cancelJob = async (jobId, userId) => {
+  const job = await prisma.job.findUnique({ where: { id: jobId } });
+
+  if (!job) {
+    const error = new Error('Job not found');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (job.userId !== userId) {
+    const error = new Error('Only the job owner can cancel this job');
+    error.statusCode = 403;
+    throw error;
+  }
+
+  if (job.status === 'completed') {
+    const error = new Error('Completed jobs cannot be cancelled');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  return prisma.job.update({
+    where: { id: jobId },
+    data: { status: 'cancelled' },
+  });
+};
+
 exports.applyToJob = async ({ jobId, workerId, message }) => {
-  // Check job exists and is open
   const job = await prisma.job.findUnique({ where: { id: jobId } });
 
   if (!job) {
@@ -95,7 +148,6 @@ exports.applyToJob = async ({ jobId, workerId, message }) => {
 };
 
 exports.getApplications = async (jobId, userId) => {
-  // Verify the job belongs to the user
   const job = await prisma.job.findUnique({ where: { id: jobId } });
 
   if (!job || job.userId !== userId) {
@@ -116,7 +168,6 @@ exports.getApplications = async (jobId, userId) => {
 };
 
 exports.updateApplication = async ({ applicationId, jobId, userId, status }) => {
-  // Verify the job belongs to the user
   const job = await prisma.job.findUnique({ where: { id: jobId } });
 
   if (!job || job.userId !== userId) {
