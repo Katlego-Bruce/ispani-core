@@ -23,7 +23,6 @@ const registerSchema = z.object({
   phone: z.string().min(10, 'Phone must be at least 10 digits').regex(/^[0-9+]+$/, 'Invalid phone format'),
   email: z.string().email('Invalid email format').optional(),
   password: z.string().min(8, 'Password must be at least 8 characters'),
-  role: z.enum(['CLIENT', 'WORKER'], { message: 'Role must be CLIENT or WORKER' }),
   skills: z.array(z.string()).optional().default([]),
 });
 
