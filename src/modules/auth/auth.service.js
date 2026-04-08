@@ -3,7 +3,6 @@ const { prisma } = require('../../services/prisma');
 const { generateToken } = require('../../services/jwt');
 
 exports.register = async (data) => {
-  // Check if phone already exists
   const existing = await prisma.user.findUnique({
     where: { phone: data.phone },
   });
@@ -22,7 +21,6 @@ exports.register = async (data) => {
       lastName: data.lastName,
       phone: data.phone,
       password: hashedPassword,
-      role: data.role,
       skills: data.skills || [],
     },
     select: {
@@ -30,21 +28,17 @@ exports.register = async (data) => {
       firstName: true,
       lastName: true,
       phone: true,
-      role: true,
       skills: true,
       createdAt: true,
     },
   });
 
-  const token = generateToken({ id: user.id, role: user.role });
-
+  const token = generateToken({ id: user.id });
   return { user, token };
 };
 
 exports.login = async ({ phone, password }) => {
-  const user = await prisma.user.findUnique({
-    where: { phone },
-  });
+  const user = await prisma.user.findUnique({ where: { phone } });
 
   if (!user) {
     const error = new Error('Invalid credentials');
@@ -53,22 +47,19 @@ exports.login = async ({ phone, password }) => {
   }
 
   const isMatch = await bcrypt.compare(password, user.password);
-
   if (!isMatch) {
     const error = new Error('Invalid credentials');
     error.statusCode = 401;
     throw error;
   }
 
-  const token = generateToken({ id: user.id, role: user.role });
-
+  const token = generateToken({ id: user.id });
   return {
     user: {
       id: user.id,
       firstName: user.firstName,
       lastName: user.lastName,
       phone: user.phone,
-      role: user.role,
       skills: user.skills,
     },
     token,
