@@ -71,14 +71,17 @@ async function findNearbyWorkers({
 
 /**
  * Broadcast a job to the nearest available workers.
- * Finds the job, validates it, then queries nearby workers.
+ * Validates job exists, is OPEN, has coordinates, and belongs to the requesting user.
  */
-async function broadcastJob(jobId, { radiusKm, limit } = {}) {
+async function broadcastJob(jobId, userId, { radiusKm, limit } = {}) {
   const job = await prisma.job.findUnique({
     where: { id: jobId, deletedAt: null },
   });
 
   if (!job) throw new AppError('Job not found', 404);
+  if (job.userId !== userId) {
+    throw new AppError('Only the job owner can broadcast this job', 403);
+  }
   if (job.status !== 'OPEN')
     throw new AppError('Job is not open for matching', 400);
   if (!job.latitude || !job.longitude) {
