@@ -1,10 +1,8 @@
-const bcrypt = require('bcryptjs');
+const argon2 = require('argon2');
 const { prisma } = require('../../services/prisma');
 const { generateToken } = require('../../services/jwt');
 const AppError = require('../../utils/AppError');
 const logger = require('../../services/logger');
-
-const SALT_ROUNDS = 12;
 
 async function register(data) {
   const existing = await prisma.user.findUnique({
@@ -23,7 +21,7 @@ async function register(data) {
     }
   }
 
-  const hashedPassword = await bcrypt.hash(data.password, SALT_ROUNDS);
+  const hashedPassword = await argon2.hash(data.password);
 
   const user = await prisma.user.create({
     data: {
@@ -60,7 +58,7 @@ async function login({ phone, password }) {
     throw new AppError('Invalid credentials', 401);
   }
 
-  const isMatch = await bcrypt.compare(password, user.password);
+  const isMatch = await argon2.verify(user.password, password);
   if (!isMatch) {
     throw new AppError('Invalid credentials', 401);
   }
