@@ -22,6 +22,14 @@ enum ApplicationStatus {
   REJECTED
 }
 
+enum PaymentStatus {
+  PENDING
+  HELD
+  RELEASED
+  REFUNDED
+  DISPUTED
+}
+
 // ─── Models ───────────────────────────────────────────────
 model User {
   id                   String    @id @default(uuid())
@@ -37,17 +45,31 @@ model User {
   longitude            Float?
   lastLocationUpdateAt DateTime?
   isOnline             Boolean   @default(false)
+  isAdmin              Boolean   @default(false)
+  isSuspended          Boolean   @default(false)
+  isBanned             Boolean   @default(false)
+  fcmToken             String?
+  averageRating        Float     @default(0)
+  completedJobs        Int       @default(0)
+  cancelledJobs        Int       @default(0)
+  totalJobsAccepted    Int       @default(0)
+  userLevel            Int       @default(1)
   deletedAt            DateTime?
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
-  jobs         Job[]
-  applications Application[]
-  assignedJobs Job[]          @relation("AssignedUser")
+  jobs             Job[]
+  applications     Application[]
+  assignedJobs     Job[]          @relation("AssignedUser")
+  reviewsGiven     Review[]       @relation("ReviewsGiven")
+  reviewsReceived  Review[]       @relation("ReviewsReceived")
+  paymentsMade     Payment[]      @relation("PaymentsMade")
+  paymentsReceived Payment[]      @relation("PaymentsReceived")
 
   @@index([deletedAt])
   @@index([latitude, longitude])
   @@index([isOnline])
+  @@index([isAdmin])
 }
 
 model Job {
@@ -69,6 +91,8 @@ model Job {
   assignedToId String?
   assignedTo   User?         @relation("AssignedUser", fields: [assignedToId], references: [id])
   applications Application[]
+  reviews      Review[]
+  payment      Payment?
 
   @@index([status])
   @@index([category])
@@ -94,4 +118,55 @@ model Application {
   @@unique([jobId, applicantId])
   @@index([applicantId])
   @@index([status])
+}
+
+model Otp {
+  id        String   @id @default(uuid())
+  phone     String
+  code      String
+  attempts  Int      @default(0)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([phone])
+  @@index([expiresAt])
+}
+
+model Review {
+  id         String   @id @default(uuid())
+  rating     Int
+  comment    String?
+  reviewerId String
+  reviewer   User     @relation("ReviewsGiven", fields: [reviewerId], references: [id])
+  revieweeId String
+  reviewee   User     @relation("ReviewsReceived", fields: [revieweeId], references: [id])
+  jobId      String
+  job        Job      @relation(fields: [jobId], references: [id])
+  createdAt  DateTime @default(now())
+
+  @@unique([reviewerId, jobId])
+  @@index([revieweeId])
+  @@index([rating])
+}
+
+model Payment {
+  id           String        @id @default(uuid())
+  amount       Decimal       @db.Decimal(10, 2)
+  serviceFee   Decimal       @db.Decimal(10, 2)
+  workerPayout Decimal       @db.Decimal(10, 2)
+  status       PaymentStatus @default(PENDING)
+  jobId        String        @unique
+  job          Job           @relation(fields: [jobId], references: [id])
+  clientId     String
+  client       User          @relation("PaymentsMade", fields: [clientId], references: [id])
+  workerId     String?
+  worker       User?         @relation("PaymentsReceived", fields: [workerId], references: [id])
+  heldAt       DateTime?
+  releasedAt   DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@index([status])
+  @@index([clientId])
+  @@index([workerId])
 }
