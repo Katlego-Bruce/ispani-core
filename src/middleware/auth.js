@@ -4,7 +4,6 @@ const { prisma } = require('../services/prisma');
 async function authenticate(req, res, next) {
   try {
     const authHeader = req.headers.authorization;
-
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({ error: 'No token provided' });
     }
@@ -19,7 +18,6 @@ async function authenticate(req, res, next) {
         firstName: true,
         lastName: true,
         phone: true,
-        role: true,
         skills: true,
         location: true,
       },
@@ -36,13 +34,4 @@ async function authenticate(req, res, next) {
   }
 }
 
-function authorize(...roles) {
-  return (req, res, next) => {
-    if (!roles.includes(req.user.role)) {
-      return res.status(403).json({ error: 'Insufficient permissions' });
-    }
-    next();
-  };
-}
-
-module.exports = { authenticate, authorize };
+module.exports = { authenticate };
