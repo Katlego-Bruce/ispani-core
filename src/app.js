@@ -13,10 +13,13 @@ const { requestId } = require('./middleware/requestId');
 const authRoutes = require('./modules/auth/auth.routes');
 const userRoutes = require('./modules/users/users.routes');
 const jobRoutes = require('./modules/jobs/jobs.routes');
+const matchingRoutes = require('./modules/matching/matching.routes');
+const { authenticate } = require('./middleware/auth');
+const matchingController = require('./modules/matching/matching.controller');
 
 const app = express();
 
-// ─── Security ─────────────────────────────────────────────
+// ─── Security ──────────────────────────────────────────
 app.use(helmet());
 app.use(cors({
   origin: config.ALLOWED_ORIGINS,
@@ -25,17 +28,17 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
-// ─── Parsing ──────────────────────────────────────────────
+// ─── Parsing ───────────────────────────────────────────
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// ─── Request ID & Logging ─────────────────────────────────
+// ─── Request ID & Logging ──────────────────────────────
 app.use(requestId);
 app.use(morgan(':method :url :status :response-time ms - :req[x-request-id]', {
   stream: { write: (msg) => logger.info(msg.trim()) },
 }));
 
-// ─── Rate Limiting ────────────────────────────────────────
+// ─── Rate Limiting ─────────────────────────────────────
 app.use(rateLimit({
   windowMs: config.RATE_LIMIT_WINDOW_MS,
   max: config.RATE_LIMIT_MAX,
@@ -44,7 +47,7 @@ app.use(rateLimit({
   legacyHeaders: false,
 }));
 
-// ─── Health Check (includes DB) ───────────────────────────
+// ─── Health Check (includes DB) ────────────────────────
 app.get('/health', async (req, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
@@ -55,7 +58,7 @@ app.get('/health', async (req, res) => {
       version: require('../package.json').version,
     });
   } catch (error) {
-    logger.error({ err: error }, 'Health check failed — database unreachable');
+    logger.error({ err: error }, 'Health check failed \u2014 database unreachable');
     res.status(503).json({
       status: 'error',
       timestamp: new Date().toISOString(),
@@ -64,22 +67,27 @@ app.get('/health', async (req, res) => {
   }
 });
 
-// ─── API Routes (versioned) ──────────────────────────────
+// ─── API Routes (versioned) ────────────────────────────
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/jobs', jobRoutes);
+app.use('/api/v1/matching', matchingRoutes);
+
+// Broadcast endpoint on jobs (POST /api/v1/jobs/:id/broadcast)
+app.post('/api/v1/jobs/:id/broadcast', authenticate, matchingController.broadcastJob);
 
 // Backward-compatible non-versioned routes (remove when frontend migrates)
 app.use('/auth', authRoutes);
 app.use('/users', userRoutes);
 app.use('/jobs', jobRoutes);
+app.use('/matching', matchingRoutes);
 
-// ─── 404 ──────────────────────────────────────────────────
+// ─── 404 ───────────────────────────────────────────────
 app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
-// ─── Error Handler ────────────────────────────────────────
+// ─── Error Handler ─────────────────────────────────────
 app.use(errorHandler);
 
 module.exports = app;
