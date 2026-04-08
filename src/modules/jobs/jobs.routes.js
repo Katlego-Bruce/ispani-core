@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const jobsController = require('./jobs.controller');
-const { authenticate, authorize } = require('../../middleware/auth');
+const { authenticate } = require('../../middleware/auth');
 const { validate } = require('../../middleware/validate');
 
 const createJobSchema = {
@@ -11,8 +11,8 @@ const createJobSchema = {
   location: { required: true, type: 'string' },
 };
 
-// Job CRUD
-router.post('/', authenticate, authorize('client'), validate(createJobSchema), jobsController.createJob);
+// Any authenticated user can create jobs
+router.post('/', authenticate, validate(createJobSchema), jobsController.createJob);
 router.get('/', jobsController.listJobs);
 router.get('/:id', jobsController.getJobById);
 
@@ -20,8 +20,8 @@ router.get('/:id', jobsController.getJobById);
 router.patch('/:id/complete', authenticate, jobsController.completeJob);
 router.patch('/:id/cancel', authenticate, jobsController.cancelJob);
 
-// Applications
-router.post('/:id/apply', authenticate, authorize('worker'), jobsController.applyToJob);
+// Any authenticated user can apply (except to their own jobs)
+router.post('/:id/apply', authenticate, jobsController.applyToJob);
 router.get('/:id/applications', authenticate, jobsController.getApplications);
 router.patch('/:id/applications/:appId', authenticate, jobsController.updateApplication);
 
