@@ -15,12 +15,14 @@ const USER_SELECT = {
   longitude: true,
   isOnline: true,
   lastLocationUpdateAt: true,
+  averageRating: true,
+  userLevel: true,
+  completedJobs: true,
   createdAt: true,
 };
 
-async function listUsers({ role, page, limit }) {
+async function listUsers({ page, limit }) {
   const where = { deletedAt: null };
-  // role filter removed — no longer stored on user
   const skip = (page - 1) * limit;
 
   const [users, total] = await Promise.all([
@@ -54,7 +56,7 @@ async function updateProfile(userId, data) {
 }
 
 /**
- * Update user GPS location and mark as online.
+ * Update user's GPS location and mark as online.
  * Any authenticated user can update their location.
  */
 async function updateLocation(userId, { latitude, longitude }) {
@@ -91,4 +93,15 @@ async function setOnlineStatus(userId, isOnline) {
   });
 }
 
-module.exports = { listUsers, getUserById, updateProfile, updateLocation, setOnlineStatus };
+/**
+ * Update user's FCM push notification token.
+ */
+async function updateFcmToken(userId, fcmToken) {
+  return prisma.user.update({
+    where: { id: userId },
+    data: { fcmToken },
+    select: { id: true, fcmToken: true },
+  });
+}
+
+module.exports = { listUsers, getUserById, updateProfile, updateLocation, setOnlineStatus, updateFcmToken };
