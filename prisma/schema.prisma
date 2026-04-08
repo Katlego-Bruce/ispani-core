@@ -28,25 +28,31 @@ enum ApplicationStatus {
 
 // ─── Models ───────────────────────────────────────────────
 model User {
-  id        String   @id @default(uuid())
-  firstName String
-  lastName  String
-  phone     String   @unique
-  email     String?  @unique
-  password  String
-  role      UserRole
-  skills    String[]
-  location  String?
-  bio       String?
-  deletedAt DateTime?           // Soft delete
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                   String    @id @default(uuid())
+  firstName            String
+  lastName             String
+  phone                String    @unique
+  email                String?   @unique
+  password             String
+  role                 UserRole
+  skills               String[]
+  location             String?
+  bio                  String?
+  latitude             Float?                    // GPS latitude
+  longitude            Float?                    // GPS longitude
+  lastLocationUpdateAt DateTime?                 // When location was last refreshed
+  isOnline             Boolean   @default(false) // Worker availability flag
+  deletedAt            DateTime?                 // Soft delete
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   jobs         Job[]
   applications Application[]
 
   @@index([role])
   @@index([deletedAt])
+  @@index([latitude, longitude])
+  @@index([isOnline])
 }
 
 model Job {
@@ -56,6 +62,8 @@ model Job {
   budget      Decimal   @db.Decimal(10, 2)  // Precise monetary values
   location    String
   category    String?
+  latitude    Float?                         // Job site latitude
+  longitude   Float?                         // Job site longitude
   status      JobStatus @default(OPEN)
   deletedAt   DateTime?                      // Soft delete
   createdAt   DateTime  @default(now())
@@ -70,6 +78,7 @@ model Job {
   @@index([userId])
   @@index([createdAt])
   @@index([deletedAt])
+  @@index([latitude, longitude])
 }
 
 model Application {
