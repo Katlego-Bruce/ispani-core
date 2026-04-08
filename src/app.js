@@ -14,7 +14,7 @@ const authRoutes = require('./modules/auth/auth.routes');
 const userRoutes = require('./modules/users/users.routes');
 const jobRoutes = require('./modules/jobs/jobs.routes');
 const matchingRoutes = require('./modules/matching/matching.routes');
-const { authenticate } = require('./middleware/auth');
+const { authenticate, authorize } = require('./middleware/auth');
 const matchingController = require('./modules/matching/matching.controller');
 
 const app = express();
@@ -73,8 +73,8 @@ app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/jobs', jobRoutes);
 app.use('/api/v1/matching', matchingRoutes);
 
-// Broadcast endpoint on jobs (POST /api/v1/jobs/:id/broadcast)
-app.post('/api/v1/jobs/:id/broadcast', authenticate, matchingController.broadcastJob);
+// Broadcast endpoint — CLIENT only, must own the job
+app.post('/api/v1/jobs/:id/broadcast', authenticate, authorize('CLIENT'), matchingController.broadcastJob);
 
 // Backward-compatible non-versioned routes (remove when frontend migrates)
 app.use('/auth', authRoutes);
