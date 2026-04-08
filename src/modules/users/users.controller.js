@@ -23,4 +23,24 @@ const updateProfile = asyncHandler(async (req, res) => {
   res.json({ message: 'Profile updated', data: user });
 });
 
-module.exports = { listUsers, getUserById, updateProfile };
+/**
+ * PATCH /api/v1/users/location
+ * Update worker's GPS coordinates. Sets isOnline=true and lastLocationUpdateAt.
+ */
+const updateLocation = asyncHandler(async (req, res) => {
+  const { latitude, longitude } = req.body;
+  const user = await usersService.updateLocation(req.user.id, { latitude, longitude });
+  res.json({ message: 'Location updated', data: user });
+});
+
+/**
+ * PATCH /api/v1/users/status
+ * Set worker online/offline.
+ */
+const setOnlineStatus = asyncHandler(async (req, res) => {
+  const { isOnline } = req.body;
+  const user = await usersService.setOnlineStatus(req.user.id, isOnline);
+  res.json({ message: `Status set to ${isOnline ? 'online' : 'offline'}`, data: user });
+});
+
+module.exports = { listUsers, getUserById, updateProfile, updateLocation, setOnlineStatus };
