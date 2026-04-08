@@ -14,6 +14,9 @@ const authRoutes = require('./modules/auth/auth.routes');
 const userRoutes = require('./modules/users/users.routes');
 const jobRoutes = require('./modules/jobs/jobs.routes');
 const matchingRoutes = require('./modules/matching/matching.routes');
+const reviewRoutes = require('./modules/reviews/reviews.routes');
+const paymentRoutes = require('./modules/payments/payments.routes');
+const adminRoutes = require('./modules/admin/admin.routes');
 const { authenticate } = require('./middleware/auth');
 const matchingController = require('./modules/matching/matching.controller');
 
@@ -47,7 +50,7 @@ app.use(rateLimit({
   legacyHeaders: false,
 }));
 
-// ─── Health Check (includes DB) ────────────────────────
+// ─── Health Check ──────────────────────────────────────
 app.get('/health', async (req, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
@@ -58,12 +61,8 @@ app.get('/health', async (req, res) => {
       version: require('../package.json').version,
     });
   } catch (error) {
-    logger.error({ err: error }, 'Health check failed — database unreachable');
-    res.status(503).json({
-      status: 'error',
-      timestamp: new Date().toISOString(),
-      database: 'disconnected',
-    });
+    logger.error({ err: error }, 'Health check failed');
+    res.status(503).json({ status: 'error', timestamp: new Date().toISOString(), database: 'disconnected' });
   }
 });
 
@@ -72,15 +71,12 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/jobs', jobRoutes);
 app.use('/api/v1/matching', matchingRoutes);
+app.use('/api/v1/reviews', reviewRoutes);
+app.use('/api/v1/payments', paymentRoutes);
+app.use('/api/v1/admin', adminRoutes);
 
 // Broadcast endpoint — ownership enforced at service layer
 app.post('/api/v1/jobs/:id/broadcast', authenticate, matchingController.broadcastJob);
-
-// Backward-compatible non-versioned routes (remove when frontend migrates)
-app.use('/auth', authRoutes);
-app.use('/users', userRoutes);
-app.use('/jobs', jobRoutes);
-app.use('/matching', matchingRoutes);
 
 // ─── 404 ───────────────────────────────────────────────
 app.use((req, res) => {
