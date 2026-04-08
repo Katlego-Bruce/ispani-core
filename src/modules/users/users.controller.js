@@ -4,11 +4,10 @@ const asyncHandler = require('../../utils/asyncHandler');
 const MAX_PAGE_LIMIT = 100;
 
 const listUsers = asyncHandler(async (req, res) => {
-  const { role } = req.query;
   const page = Math.max(1, parseInt(req.query.page, 10) || 1);
   const limit = Math.min(Math.max(1, parseInt(req.query.limit, 10) || 20), MAX_PAGE_LIMIT);
 
-  const result = await usersService.listUsers({ role, page, limit });
+  const result = await usersService.listUsers({ page, limit });
   res.json({ data: result });
 });
 
@@ -23,24 +22,25 @@ const updateProfile = asyncHandler(async (req, res) => {
   res.json({ message: 'Profile updated', data: user });
 });
 
-/**
- * PATCH /api/v1/users/location
- * Update worker's GPS coordinates. Sets isOnline=true and lastLocationUpdateAt.
- */
+/** PATCH /api/v1/users/location — Update GPS coordinates. */
 const updateLocation = asyncHandler(async (req, res) => {
   const { latitude, longitude } = req.body;
   const user = await usersService.updateLocation(req.user.id, { latitude, longitude });
   res.json({ message: 'Location updated', data: user });
 });
 
-/**
- * PATCH /api/v1/users/status
- * Set worker online/offline.
- */
+/** PATCH /api/v1/users/status — Set online/offline. */
 const setOnlineStatus = asyncHandler(async (req, res) => {
   const { isOnline } = req.body;
   const user = await usersService.setOnlineStatus(req.user.id, isOnline);
   res.json({ message: `Status set to ${isOnline ? 'online' : 'offline'}`, data: user });
 });
 
-module.exports = { listUsers, getUserById, updateProfile, updateLocation, setOnlineStatus };
+/** PATCH /api/v1/users/fcm-token — Update FCM push token. */
+const updateFcmToken = asyncHandler(async (req, res) => {
+  const { fcmToken } = req.body;
+  const result = await usersService.updateFcmToken(req.user.id, fcmToken);
+  res.json({ message: 'FCM token updated', data: result });
+});
+
+module.exports = { listUsers, getUserById, updateProfile, updateLocation, setOnlineStatus, updateFcmToken };
