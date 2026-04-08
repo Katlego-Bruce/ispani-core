@@ -9,7 +9,6 @@ const registerSchema = {
   lastName: { required: true, type: 'string', minLength: 2 },
   phone: { required: true, type: 'string', minLength: 10 },
   password: { required: true, type: 'string', minLength: 6 },
-  role: { required: true, type: 'string', enum: ['client', 'worker'] },
 };
 
 const loginSchema = {
