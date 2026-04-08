@@ -2,7 +2,7 @@ const express = require('express');
 const { z } = require('zod');
 const router = express.Router();
 const jobsController = require('./jobs.controller');
-const { authenticate, authorize } = require('../../middleware/auth');
+const { authenticate } = require('../../middleware/auth');
 const { validate } = require('../../middleware/validate');
 
 const createJobSchema = z.object({
@@ -16,16 +16,17 @@ const createJobSchema = z.object({
 });
 
 // Job CRUD
-router.post('/', authenticate, authorize('CLIENT'), validate(createJobSchema), jobsController.createJob);
+router.post('/', authenticate, validate(createJobSchema), jobsController.createJob);
 router.get('/', jobsController.listJobs);
 router.get('/:id', jobsController.getJobById);
 
 // Job status management
+router.patch('/:id/start', authenticate, jobsController.startJob);
 router.patch('/:id/complete', authenticate, jobsController.completeJob);
 router.patch('/:id/cancel', authenticate, jobsController.cancelJob);
 
 // Applications
-router.post('/:id/apply', authenticate, authorize('WORKER'), jobsController.applyToJob);
+router.post('/:id/apply', authenticate, jobsController.applyToJob);
 router.get('/:id/applications', authenticate, jobsController.getApplications);
 router.patch('/:id/applications/:appId', authenticate, jobsController.updateApplication);
 
