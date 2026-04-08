@@ -2,7 +2,7 @@ const express = require('express');
 const { z } = require('zod');
 const router = express.Router();
 const usersController = require('./users.controller');
-const { authenticate } = require('../../middleware/auth');
+const { authenticate, authorize } = require('../../middleware/auth');
 const { validate } = require('../../middleware/validate');
 
 const updateProfileSchema = z.object({
@@ -16,8 +16,21 @@ const updateProfileSchema = z.object({
   message: 'At least one field must be provided',
 });
 
+const updateLocationSchema = z.object({
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+});
+
+const setStatusSchema = z.object({
+  isOnline: z.boolean(),
+});
+
 router.get('/', authenticate, usersController.listUsers);
 router.get('/:id', authenticate, usersController.getUserById);
 router.patch('/me', authenticate, validate(updateProfileSchema), usersController.updateProfile);
+
+// Worker location & status endpoints
+router.patch('/location', authenticate, authorize('WORKER'), validate(updateLocationSchema), usersController.updateLocation);
+router.patch('/status', authenticate, authorize('WORKER'), validate(setStatusSchema), usersController.setOnlineStatus);
 
 module.exports = router;
