@@ -1,6 +1,8 @@
 const { prisma } = require('../../services/prisma');
+const AppError = require('../../utils/AppError');
+const logger = require('../../services/logger');
 
-exports.createJob = async (data) => {
+async function createJob(data) {
   return prisma.job.create({
     data: {
       title: data.title,
@@ -11,15 +13,13 @@ exports.createJob = async (data) => {
       userId: data.userId,
     },
     include: {
-      user: {
-        select: { id: true, firstName: true, lastName: true },
-      },
+      user: { select: { id: true, firstName: true, lastName: true } },
     },
   });
-};
+}
 
-exports.listJobs = async ({ status, category, page, limit }) => {
-  const where = {};
+async function listJobs({ status, category, page, limit }) {
+  const where = { deletedAt: null };
   if (status) where.status = status;
   if (category) where.category = category;
 
@@ -31,9 +31,7 @@ exports.listJobs = async ({ status, category, page, limit }) => {
       skip,
       take: limit,
       include: {
-        user: {
-          select: { id: true, firstName: true, lastName: true },
-        },
+        user: { select: { id: true, firstName: true, lastName: true } },
         _count: { select: { applications: true } },
       },
       orderBy: { createdAt: 'desc' },
@@ -43,101 +41,58 @@ exports.listJobs = async ({ status, category, page, limit }) => {
 
   return {
     jobs,
-    pagination: {
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
-    },
+    pagination: { total, page, limit, totalPages: Math.ceil(total / limit) },
   };
-};
+}
 
-exports.getJobById = async (id) => {
+async function getJobById(id) {
   return prisma.job.findUnique({
-    where: { id },
+    where: { id, deletedAt: null },
     include: {
-      user: {
-        select: { id: true, firstName: true, lastName: true, phone: true },
-      },
+      user: { select: { id: true, firstName: true, lastName: true, phone: true } },
       _count: { select: { applications: true } },
     },
   });
-};
+}
 
-exports.completeJob = async (jobId, userId) => {
+async function completeJob(jobId, userId) {
   const job = await prisma.job.findUnique({ where: { id: jobId } });
 
-  if (!job) {
-    const error = new Error('Job not found');
-    error.statusCode = 404;
-    throw error;
-  }
+  if (!job) throw new AppError('Job not found', 404);
+  if (job.userId !== userId) throw new AppError('Only the job owner can complete this job', 403);
+  if (job.status !== 'ASSIGNED') throw new AppError('Only assigned jobs can be completed', 400);
 
-  if (job.userId !== userId) {
-    const error = new Error('Only the job owner can complete this job');
-    error.statusCode = 403;
-    throw error;
-  }
-
-  if (job.status !== 'assigned') {
-    const error = new Error('Only assigned jobs can be completed');
-    error.statusCode = 400;
-    throw error;
-  }
-
-  return prisma.job.update({
+  const updated = await prisma.job.update({
     where: { id: jobId },
-    data: { status: 'completed' },
+    data: { status: 'COMPLETED' },
   });
-};
 
-exports.cancelJob = async (jobId, userId) => {
+  logger.info({ jobId }, 'Job completed');
+  return updated;
+}
+
+async function cancelJob(jobId, userId) {
   const job = await prisma.job.findUnique({ where: { id: jobId } });
 
-  if (!job) {
-    const error = new Error('Job not found');
-    error.statusCode = 404;
-    throw error;
-  }
+  if (!job) throw new AppError('Job not found', 404);
+  if (job.userId !== userId) throw new AppError('Only the job owner can cancel this job', 403);
+  if (job.status === 'COMPLETED') throw new AppError('Completed jobs cannot be cancelled', 400);
 
-  if (job.userId !== userId) {
-    const error = new Error('Only the job owner can cancel this job');
-    error.statusCode = 403;
-    throw error;
-  }
-
-  if (job.status === 'completed') {
-    const error = new Error('Completed jobs cannot be cancelled');
-    error.statusCode = 400;
-    throw error;
-  }
-
-  return prisma.job.update({
+  const updated = await prisma.job.update({
     where: { id: jobId },
-    data: { status: 'cancelled' },
+    data: { status: 'CANCELLED' },
   });
-};
 
-exports.applyToJob = async ({ jobId, workerId, message }) => {
+  logger.info({ jobId }, 'Job cancelled');
+  return updated;
+}
+
+async function applyToJob({ jobId, workerId, message }) {
   const job = await prisma.job.findUnique({ where: { id: jobId } });
 
-  if (!job) {
-    const error = new Error('Job not found');
-    error.statusCode = 404;
-    throw error;
-  }
-
-  if (job.status !== 'open') {
-    const error = new Error('This job is no longer accepting applications');
-    error.statusCode = 400;
-    throw error;
-  }
-
-  if (job.userId === workerId) {
-    const error = new Error('You cannot apply to your own job');
-    error.statusCode = 400;
-    throw error;
-  }
+  if (!job) throw new AppError('Job not found', 404);
+  if (job.status !== 'OPEN') throw new AppError('This job is no longer accepting applications', 400);
+  if (job.userId === workerId) throw new AppError('You cannot apply to your own job', 400);
 
   return prisma.application.create({
     data: { jobId, workerId, message },
@@ -145,15 +100,13 @@ exports.applyToJob = async ({ jobId, workerId, message }) => {
       job: { select: { id: true, title: true } },
     },
   });
-};
+}
 
-exports.getApplications = async (jobId, userId) => {
+async function getApplications(jobId, userId) {
   const job = await prisma.job.findUnique({ where: { id: jobId } });
 
   if (!job || job.userId !== userId) {
-    const error = new Error('Not authorized to view these applications');
-    error.statusCode = 403;
-    throw error;
+    throw new AppError('Not authorized to view these applications', 403);
   }
 
   return prisma.application.findMany({
@@ -165,34 +118,66 @@ exports.getApplications = async (jobId, userId) => {
     },
     orderBy: { createdAt: 'desc' },
   });
-};
+}
 
-exports.updateApplication = async ({ applicationId, jobId, userId, status }) => {
+/**
+ * FIXED: Uses a Prisma transaction to prevent race conditions.
+ * When accepting an application:
+ *  1. Updates the application status
+ *  2. Updates the job status to ASSIGNED
+ *  3. Rejects all other pending applications
+ * All three happen atomically — no two accepts can succeed.
+ */
+async function updateApplication({ applicationId, jobId, userId, status }) {
   const job = await prisma.job.findUnique({ where: { id: jobId } });
 
   if (!job || job.userId !== userId) {
-    const error = new Error('Not authorized');
-    error.statusCode = 403;
-    throw error;
+    throw new AppError('Not authorized', 403);
   }
 
-  const application = await prisma.application.update({
-    where: { id: applicationId },
-    data: { status },
-    include: {
-      worker: {
-        select: { id: true, firstName: true, lastName: true },
+  // Use transaction for atomicity
+  const result = await prisma.$transaction(async (tx) => {
+    const application = await tx.application.update({
+      where: { id: applicationId },
+      data: { status },
+      include: {
+        worker: { select: { id: true, firstName: true, lastName: true } },
       },
-    },
+    });
+
+    if (status === 'ACCEPTED') {
+      // Set job to assigned
+      await tx.job.update({
+        where: { id: jobId },
+        data: { status: 'ASSIGNED' },
+      });
+
+      // Reject all other pending applications atomically
+      await tx.application.updateMany({
+        where: {
+          jobId,
+          id: { not: applicationId },
+          status: 'PENDING',
+        },
+        data: { status: 'REJECTED' },
+      });
+
+      logger.info({ jobId, applicationId, workerId: application.workerId }, 'Application accepted, others rejected');
+    }
+
+    return application;
   });
 
-  // If accepted, update job status to assigned
-  if (status === 'accepted') {
-    await prisma.job.update({
-      where: { id: jobId },
-      data: { status: 'assigned' },
-    });
-  }
+  return result;
+}
 
-  return application;
+module.exports = {
+  createJob,
+  listJobs,
+  getJobById,
+  completeJob,
+  cancelJob,
+  applyToJob,
+  getApplications,
+  updateApplication,
 };

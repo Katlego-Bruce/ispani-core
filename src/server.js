@@ -3,12 +3,52 @@ require('dotenv').config();
 const { validateEnv } = require('./config/env');
 const config = require('./config');
 const app = require('./app');
+const logger = require('./services/logger');
+const { prisma } = require('./services/prisma');
 
-// Validate environment
+// Validate environment before anything else
 validateEnv();
 
-app.listen(config.PORT, () => {
-  console.log(`🚀 ISPANI API running on port ${config.PORT}`);
-  console.log(`📍 Environment: ${config.NODE_ENV}`);
-  console.log(`🔗 Health: http://localhost:${config.PORT}/health`);
+const server = app.listen(config.PORT, () => {
+  logger.info({ port: config.PORT, env: config.NODE_ENV }, 'ISPANI API started');
+  logger.info(`Health: http://localhost:${config.PORT}/health`);
+  logger.info(`API v1: http://localhost:${config.PORT}/api/v1`);
+});
+
+// ─── Graceful Shutdown ────────────────────────────────────
+async function gracefulShutdown(signal) {
+  logger.info({ signal }, 'Shutdown signal received, closing gracefully...');
+
+  server.close(async () => {
+    logger.info('HTTP server closed');
+
+    try {
+      await prisma.$disconnect();
+      logger.info('Database connection closed');
+    } catch (error) {
+      logger.error({ err: error }, 'Error disconnecting from database');
+    }
+
+    process.exit(0);
+  });
+
+  // Force shutdown after 10 seconds
+  setTimeout(() => {
+    logger.error('Forced shutdown — timeout exceeded');
+    process.exit(1);
+  }, 10_000);
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// Catch unhandled errors
+process.on('unhandledRejection', (reason) => {
+  logger.fatal({ err: reason }, 'Unhandled Rejection');
+  process.exit(1);
+});
+
+process.on('uncaughtException', (error) => {
+  logger.fatal({ err: error }, 'Uncaught Exception');
+  process.exit(1);
 });

@@ -7,6 +7,26 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ─── Enums ────────────────────────────────────────────────
+enum UserRole {
+  CLIENT
+  WORKER
+}
+
+enum JobStatus {
+  OPEN
+  ASSIGNED
+  COMPLETED
+  CANCELLED
+}
+
+enum ApplicationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+// ─── Models ───────────────────────────────────────────────
 model User {
   id        String   @id @default(uuid())
   firstName String
@@ -14,44 +34,57 @@ model User {
   phone     String   @unique
   email     String?  @unique
   password  String
-  role      String   // "client" | "worker"
+  role      UserRole
   skills    String[]
   location  String?
   bio       String?
+  deletedAt DateTime?           // Soft delete
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   jobs         Job[]
   applications Application[]
+
+  @@index([role])
+  @@index([deletedAt])
 }
 
 model Job {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   title       String
   description String
-  budget      Float
+  budget      Decimal   @db.Decimal(10, 2)  // Precise monetary values
   location    String
   category    String?
-  status      String   @default("open") // "open" | "assigned" | "completed" | "cancelled"
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  status      JobStatus @default(OPEN)
+  deletedAt   DateTime?                      // Soft delete
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   userId       String
-  user         User          @relation(fields: [userId], references: [id])
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   applications Application[]
+
+  @@index([status])
+  @@index([category])
+  @@index([userId])
+  @@index([createdAt])
+  @@index([deletedAt])
 }
 
 model Application {
-  id        String   @id @default(uuid())
+  id        String            @id @default(uuid())
   message   String?
-  status    String   @default("pending") // "pending" | "accepted" | "rejected"
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  status    ApplicationStatus @default(PENDING)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
 
   jobId    String
-  job      Job    @relation(fields: [jobId], references: [id])
+  job      Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
   workerId String
-  worker   User   @relation(fields: [workerId], references: [id])
+  worker   User   @relation(fields: [workerId], references: [id], onDelete: Cascade)
 
   @@unique([jobId, workerId])
+  @@index([workerId])
+  @@index([status])
 }

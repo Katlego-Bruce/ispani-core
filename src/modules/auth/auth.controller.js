@@ -1,17 +1,8 @@
 const authService = require('./auth.service');
 const asyncHandler = require('../../utils/asyncHandler');
 
-exports.register = asyncHandler(async (req, res) => {
-  const { firstName, lastName, phone, password, role, skills } = req.body;
-
-  const result = await authService.register({
-    firstName,
-    lastName,
-    phone,
-    password,
-    role,
-    skills: skills || [],
-  });
+const register = asyncHandler(async (req, res) => {
+  const result = await authService.register(req.body);
 
   res.status(201).json({
     message: 'User registered successfully',
@@ -19,10 +10,8 @@ exports.register = asyncHandler(async (req, res) => {
   });
 });
 
-exports.login = asyncHandler(async (req, res) => {
-  const { phone, password } = req.body;
-
-  const result = await authService.login({ phone, password });
+const login = asyncHandler(async (req, res) => {
+  const result = await authService.login(req.body);
 
   res.json({
     message: 'Login successful',
@@ -30,8 +19,8 @@ exports.login = asyncHandler(async (req, res) => {
   });
 });
 
-exports.getMe = asyncHandler(async (req, res) => {
-  res.json({
-    data: req.user,
-  });
+const getMe = asyncHandler(async (req, res) => {
+  res.json({ data: req.user });
 });
+
+module.exports = { register, login, getMe };

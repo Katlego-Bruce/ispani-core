@@ -1,24 +1,26 @@
 const usersService = require('./users.service');
 const asyncHandler = require('../../utils/asyncHandler');
 
-exports.listUsers = asyncHandler(async (req, res) => {
-  const { role, page = 1, limit = 20 } = req.query;
+const MAX_PAGE_LIMIT = 100;
 
-  const result = await usersService.listUsers({
-    role,
-    page: parseInt(page),
-    limit: parseInt(limit),
-  });
+const listUsers = asyncHandler(async (req, res) => {
+  const { role } = req.query;
+  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+  const limit = Math.min(Math.max(1, parseInt(req.query.limit, 10) || 20), MAX_PAGE_LIMIT);
 
+  const result = await usersService.listUsers({ role, page, limit });
   res.json({ data: result });
 });
 
-exports.getUserById = asyncHandler(async (req, res) => {
+const getUserById = asyncHandler(async (req, res) => {
   const user = await usersService.getUserById(req.params.id);
-
-  if (!user) {
-    return res.status(404).json({ error: 'User not found' });
-  }
-
+  if (!user) return res.status(404).json({ error: 'User not found' });
   res.json({ data: user });
 });
+
+const updateProfile = asyncHandler(async (req, res) => {
+  const user = await usersService.updateProfile(req.user.id, req.body);
+  res.json({ message: 'Profile updated', data: user });
+});
+
+module.exports = { listUsers, getUserById, updateProfile };
