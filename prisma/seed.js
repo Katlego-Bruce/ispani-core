@@ -4,12 +4,11 @@ const bcrypt = require('bcryptjs');
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Seeding database...');
+  console.log('Seeding database...');
 
   const hashedPassword = await bcrypt.hash('password123', 10);
 
-  // Create sample client
-  const client1 = await prisma.user.upsert({
+  const user1 = await prisma.user.upsert({
     where: { phone: '0712345678' },
     update: {},
     create: {
@@ -17,13 +16,11 @@ async function main() {
       lastName: 'Mokoena',
       phone: '0712345678',
       password: hashedPassword,
-      role: 'client',
       location: 'Johannesburg',
     },
   });
 
-  // Create sample worker
-  const worker1 = await prisma.user.upsert({
+  const user2 = await prisma.user.upsert({
     where: { phone: '0798765432' },
     update: {},
     create: {
@@ -31,13 +28,11 @@ async function main() {
       lastName: 'Dlamini',
       phone: '0798765432',
       password: hashedPassword,
-      role: 'worker',
       skills: ['plumbing', 'electrical', 'painting'],
       location: 'Soweto',
     },
   });
 
-  // Create sample job
   await prisma.job.create({
     data: {
       title: 'Fix leaking tap',
@@ -45,12 +40,23 @@ async function main() {
       budget: 350,
       location: 'Sandton',
       category: 'plumbing',
-      userId: client1.id,
+      userId: user1.id,
     },
   });
 
-  console.log('✅ Seed completed!');
-  console.log({ client1, worker1 });
+  await prisma.job.create({
+    data: {
+      title: 'Paint bedroom walls',
+      description: 'Need two bedroom walls painted white. Paint provided.',
+      budget: 500,
+      location: 'Soweto',
+      category: 'painting',
+      userId: user2.id,
+    },
+  });
+
+  console.log('Seed completed!');
+  console.log('Both users can create jobs AND apply to others jobs.');
 }
 
 main()
