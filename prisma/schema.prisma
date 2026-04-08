@@ -14,7 +14,6 @@ model User {
   phone     String   @unique
   email     String?  @unique
   password  String
-  role      String   // "client" | "worker"
   skills    String[]
   location  String?
   bio       String?
@@ -32,7 +31,7 @@ model Job {
   budget      Float
   location    String
   category    String?
-  status      String   @default("open") // "open" | "assigned" | "completed" | "cancelled"
+  status      String   @default("open")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -44,7 +43,7 @@ model Job {
 model Application {
   id        String   @id @default(uuid())
   message   String?
-  status    String   @default("pending") // "pending" | "accepted" | "rejected"
+  status    String   @default("pending")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
