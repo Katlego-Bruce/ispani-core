@@ -8,7 +8,6 @@ const USER_SELECT = {
   lastName: true,
   phone: true,
   email: true,
-  role: true,
   skills: true,
   location: true,
   bio: true,
@@ -21,7 +20,7 @@ const USER_SELECT = {
 
 async function listUsers({ role, page, limit }) {
   const where = { deletedAt: null };
-  if (role) where.role = role;
+  // role filter removed — no longer stored on user
   const skip = (page - 1) * limit;
 
   const [users, total] = await Promise.all([
@@ -55,16 +54,13 @@ async function updateProfile(userId, data) {
 }
 
 /**
- * Update worker's GPS location and mark as online.
- * Called by mobile app on open, every 60s heartbeat, and on job accept.
+ * Update user GPS location and mark as online.
+ * Any authenticated user can update their location.
  */
 async function updateLocation(userId, { latitude, longitude }) {
   const user = await prisma.user.findUnique({ where: { id: userId } });
 
   if (!user) throw new AppError('User not found', 404);
-  if (user.role !== 'WORKER') {
-    throw new AppError('Only workers can update location', 403);
-  }
 
   const updated = await prisma.user.update({
     where: { id: userId },
@@ -77,12 +73,12 @@ async function updateLocation(userId, { latitude, longitude }) {
     select: USER_SELECT,
   });
 
-  logger.info({ userId, latitude, longitude }, 'Worker location updated');
+  logger.info({ userId, latitude, longitude }, 'User location updated');
   return updated;
 }
 
 /**
- * Set worker online/offline status.
+ * Set user online/offline status.
  */
 async function setOnlineStatus(userId, isOnline) {
   return prisma.user.update({
