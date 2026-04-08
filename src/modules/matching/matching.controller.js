@@ -4,12 +4,13 @@ const asyncHandler = require('../../utils/asyncHandler');
 /**
  * POST /api/v1/jobs/:id/broadcast
  * Find nearby workers for a specific job and broadcast it.
+ * Only the job owner (CLIENT) can broadcast.
  */
 const broadcastJob = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { radiusKm, limit } = req.query;
 
-  const result = await matchingService.broadcastJob(id, {
+  const result = await matchingService.broadcastJob(id, req.user.id, {
     radiusKm: radiusKm ? parseFloat(radiusKm) : undefined,
     limit: limit ? parseInt(limit, 10) : undefined,
   });
