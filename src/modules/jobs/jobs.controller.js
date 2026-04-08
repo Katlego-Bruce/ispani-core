@@ -4,10 +4,10 @@ const asyncHandler = require('../../utils/asyncHandler');
 const MAX_PAGE_LIMIT = 100;
 
 const createJob = asyncHandler(async (req, res) => {
-  const { title, description, budget, location, category } = req.body;
+  const { title, description, budget, location, category, latitude, longitude } = req.body;
 
   const job = await jobsService.createJob({
-    title, description, budget, location, category,
+    title, description, budget, location, category, latitude, longitude,
     userId: req.user.id,
   });
 
