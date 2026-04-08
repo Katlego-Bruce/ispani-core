@@ -4,33 +4,46 @@ const AppError = require('../../utils/AppError');
 const logger = require('../../services/logger');
 
 const DEFAULT_RADIUS_KM = 10;
-const DEFAULT_MAX_WORKERS = 5;
+const DEFAULT_MAX_USERS = 5;
 const STALE_THRESHOLD_MINUTES = 5;
 
 /**
- * Finds online workers within a given radius of a GPS coordinate.
- * Filters out ghost workers (stale location > 5 min).
+ * Finds online users within a given radius of a GPS coordinate.
+ * Behavior-based: no role filter — any online user with location is eligible.
+ * Supports excluding specific users (job owner, existing applicants).
+ * Filters out ghost users (stale location > 5 min).
  * Sorts by distance ascending, returns top N.
  */
-async function findNearbyWorkers({
+async function findNearbyUsers({
   latitude,
   longitude,
   radiusKm = DEFAULT_RADIUS_KM,
-  limit = DEFAULT_MAX_WORKERS,
+  limit = DEFAULT_MAX_USERS,
+  excludeUserId = null,
+  excludeUserIds = [],
 }) {
   const staleThreshold = new Date(
     Date.now() - STALE_THRESHOLD_MINUTES * 60 * 1000
   );
 
-  const workers = await prisma.user.findMany({
-    where: {
-      role: 'WORKER',
-      isOnline: true,
-      deletedAt: null,
-      latitude: { not: null },
-      longitude: { not: null },
-      lastLocationUpdateAt: { gte: staleThreshold },
-    },
+  // Build exclusion list
+  const allExcluded = [...excludeUserIds];
+  if (excludeUserId) allExcluded.push(excludeUserId);
+
+  const whereClause = {
+    isOnline: true,
+    deletedAt: null,
+    latitude: { not: null },
+    longitude: { not: null },
+    lastLocationUpdateAt: { gte: staleThreshold },
+  };
+
+  if (allExcluded.length > 0) {
+    whereClause.id = { notIn: allExcluded };
+  }
+
+  const users = await prisma.user.findMany({
+    where: whereClause,
     select: {
       id: true,
       firstName: true,
@@ -43,39 +56,43 @@ async function findNearbyWorkers({
     },
   });
 
-  const nearbyWorkers = workers
-    .map((worker) => ({
-      ...worker,
+  const nearbyUsers = users
+    .map((user) => ({
+      ...user,
       distanceKm: haversineDistance(
         latitude,
         longitude,
-        worker.latitude,
-        worker.longitude
+        user.latitude,
+        user.longitude
       ),
     }))
-    .filter((w) => w.distanceKm <= radiusKm)
+    .filter((u) => u.distanceKm <= radiusKm)
     .sort((a, b) => a.distanceKm - b.distanceKm)
     .slice(0, limit)
-    .map((w) => ({
-      ...w,
-      distanceKm: Math.round(w.distanceKm * 100) / 100,
+    .map((u) => ({
+      ...u,
+      distanceKm: Math.round(u.distanceKm * 100) / 100,
     }));
 
   logger.info(
-    { count: nearbyWorkers.length, radiusKm, latitude, longitude },
-    'Nearby workers found'
+    { count: nearbyUsers.length, radiusKm, latitude, longitude },
+    'Nearby users found'
   );
 
-  return nearbyWorkers;
+  return nearbyUsers;
 }
 
 /**
- * Broadcast a job to the nearest available workers.
+ * Broadcast a job to the nearest available users.
  * Validates job exists, is OPEN, has coordinates, and belongs to the requesting user.
+ * Excludes the job owner and existing applicants from matching.
  */
 async function broadcastJob(jobId, userId, { radiusKm, limit } = {}) {
   const job = await prisma.job.findUnique({
     where: { id: jobId, deletedAt: null },
+    include: {
+      applications: { select: { applicantId: true } },
+    },
   });
 
   if (!job) throw new AppError('Job not found', 404);
@@ -86,21 +103,26 @@ async function broadcastJob(jobId, userId, { radiusKm, limit } = {}) {
     throw new AppError('Job is not open for matching', 400);
   if (!job.latitude || !job.longitude) {
     throw new AppError(
-      'Job has no coordinates — set latitude/longitude to match workers',
+      'Job has no coordinates — set latitude/longitude to match users',
       400
     );
   }
 
-  const workers = await findNearbyWorkers({
+  // Exclude job owner and existing applicants
+  const existingApplicantIds = job.applications.map((a) => a.applicantId);
+
+  const users = await findNearbyUsers({
     latitude: job.latitude,
     longitude: job.longitude,
     radiusKm,
     limit,
+    excludeUserId: userId,
+    excludeUserIds: existingApplicantIds,
   });
 
   logger.info(
-    { jobId, matched: workers.length },
-    'Job broadcast to nearby workers'
+    { jobId, matched: users.length },
+    'Job broadcast to nearby users'
   );
 
   return {
@@ -112,10 +134,10 @@ async function broadcastJob(jobId, userId, { radiusKm, limit } = {}) {
       latitude: job.latitude,
       longitude: job.longitude,
     },
-    matchedWorkers: workers,
-    totalMatched: workers.length,
+    matchedUsers: users,
+    totalMatched: users.length,
     radiusKm: radiusKm || DEFAULT_RADIUS_KM,
   };
 }
 
-module.exports = { findNearbyWorkers, broadcastJob };
+module.exports = { findNearbyUsers, broadcastJob };
