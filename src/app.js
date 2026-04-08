@@ -14,7 +14,7 @@ const authRoutes = require('./modules/auth/auth.routes');
 const userRoutes = require('./modules/users/users.routes');
 const jobRoutes = require('./modules/jobs/jobs.routes');
 const matchingRoutes = require('./modules/matching/matching.routes');
-const { authenticate, authorize } = require('./middleware/auth');
+const { authenticate } = require('./middleware/auth');
 const matchingController = require('./modules/matching/matching.controller');
 
 const app = express();
@@ -58,7 +58,7 @@ app.get('/health', async (req, res) => {
       version: require('../package.json').version,
     });
   } catch (error) {
-    logger.error({ err: error }, 'Health check failed \u2014 database unreachable');
+    logger.error({ err: error }, 'Health check failed — database unreachable');
     res.status(503).json({
       status: 'error',
       timestamp: new Date().toISOString(),
@@ -73,8 +73,8 @@ app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/jobs', jobRoutes);
 app.use('/api/v1/matching', matchingRoutes);
 
-// Broadcast endpoint — CLIENT only, must own the job
-app.post('/api/v1/jobs/:id/broadcast', authenticate, authorize('CLIENT'), matchingController.broadcastJob);
+// Broadcast endpoint — ownership enforced at service layer
+app.post('/api/v1/jobs/:id/broadcast', authenticate, matchingController.broadcastJob);
 
 // Backward-compatible non-versioned routes (remove when frontend migrates)
 app.use('/auth', authRoutes);

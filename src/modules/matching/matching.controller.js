@@ -3,8 +3,8 @@ const asyncHandler = require('../../utils/asyncHandler');
 
 /**
  * POST /api/v1/jobs/:id/broadcast
- * Find nearby workers for a specific job and broadcast it.
- * Only the job owner (CLIENT) can broadcast.
+ * Find nearby users for a specific job and broadcast it.
+ * Only the job owner can broadcast.
  */
 const broadcastJob = asyncHandler(async (req, res) => {
   const { id } = req.params;
@@ -20,7 +20,7 @@ const broadcastJob = asyncHandler(async (req, res) => {
 
 /**
  * GET /api/v1/matching/nearby
- * Find nearby workers from arbitrary coordinates.
+ * Find nearby users from arbitrary coordinates.
  * Query params: latitude, longitude, radiusKm (optional), limit (optional)
  */
 const findNearby = asyncHandler(async (req, res) => {
@@ -32,14 +32,14 @@ const findNearby = asyncHandler(async (req, res) => {
       .json({ error: 'latitude and longitude query params are required' });
   }
 
-  const workers = await matchingService.findNearbyWorkers({
+  const users = await matchingService.findNearbyUsers({
     latitude: parseFloat(latitude),
     longitude: parseFloat(longitude),
     radiusKm: radiusKm ? parseFloat(radiusKm) : undefined,
     limit: limit ? parseInt(limit, 10) : undefined,
   });
 
-  res.json({ status: 'success', data: { workers, total: workers.length } });
+  res.json({ status: 'success', data: { users, total: users.length } });
 });
 
 module.exports = { broadcastJob, findNearby };

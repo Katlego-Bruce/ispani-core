@@ -8,14 +8,10 @@ datasource db {
 }
 
 // ─── Enums ────────────────────────────────────────────────
-enum UserRole {
-  CLIENT
-  WORKER
-}
-
 enum JobStatus {
   OPEN
   ASSIGNED
+  IN_PROGRESS
   COMPLETED
   CANCELLED
 }
@@ -34,22 +30,21 @@ model User {
   phone                String    @unique
   email                String?   @unique
   password             String
-  role                 UserRole
   skills               String[]
   location             String?
   bio                  String?
-  latitude             Float?                    // GPS latitude
-  longitude            Float?                    // GPS longitude
-  lastLocationUpdateAt DateTime?                 // When location was last refreshed
-  isOnline             Boolean   @default(false) // Worker availability flag
-  deletedAt            DateTime?                 // Soft delete
+  latitude             Float?
+  longitude            Float?
+  lastLocationUpdateAt DateTime?
+  isOnline             Boolean   @default(false)
+  deletedAt            DateTime?
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
   jobs         Job[]
   applications Application[]
+  assignedJobs Job[]          @relation("AssignedUser")
 
-  @@index([role])
   @@index([deletedAt])
   @@index([latitude, longitude])
   @@index([isOnline])
@@ -59,23 +54,26 @@ model Job {
   id          String    @id @default(uuid())
   title       String
   description String
-  budget      Decimal   @db.Decimal(10, 2)  // Precise monetary values
+  budget      Decimal   @db.Decimal(10, 2)
   location    String
   category    String?
-  latitude    Float?                         // Job site latitude
-  longitude   Float?                         // Job site longitude
+  latitude    Float?
+  longitude   Float?
   status      JobStatus @default(OPEN)
-  deletedAt   DateTime?                      // Soft delete
+  deletedAt   DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
   userId       String
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignedToId String?
+  assignedTo   User?         @relation("AssignedUser", fields: [assignedToId], references: [id])
   applications Application[]
 
   @@index([status])
   @@index([category])
   @@index([userId])
+  @@index([assignedToId])
   @@index([createdAt])
   @@index([deletedAt])
   @@index([latitude, longitude])
@@ -88,12 +86,12 @@ model Application {
   createdAt DateTime          @default(now())
   updatedAt DateTime          @updatedAt
 
-  jobId    String
-  job      Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  workerId String
-  worker   User   @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  jobId       String
+  job         Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  applicantId String
+  applicant   User   @relation(fields: [applicantId], references: [id], onDelete: Cascade)
 
-  @@unique([jobId, workerId])
-  @@index([workerId])
+  @@unique([jobId, applicantId])
+  @@index([applicantId])
   @@index([status])
 }

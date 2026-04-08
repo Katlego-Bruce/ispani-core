@@ -52,9 +52,26 @@ async function getJobById(id) {
     where: { id, deletedAt: null },
     include: {
       user: { select: { id: true, firstName: true, lastName: true, phone: true } },
+      assignedTo: { select: { id: true, firstName: true, lastName: true } },
       _count: { select: { applications: true } },
     },
   });
+}
+
+async function startJob(jobId, userId) {
+  const job = await prisma.job.findUnique({ where: { id: jobId } });
+
+  if (!job) throw new AppError('Job not found', 404);
+  if (job.assignedToId !== userId) throw new AppError('Only the assigned user can start this job', 403);
+  if (job.status !== 'ASSIGNED') throw new AppError('Only assigned jobs can be started', 400);
+
+  const updated = await prisma.job.update({
+    where: { id: jobId },
+    data: { status: 'IN_PROGRESS' },
+  });
+
+  logger.info({ jobId, userId }, 'Job started');
+  return updated;
 }
 
 async function completeJob(jobId, userId) {
@@ -62,7 +79,9 @@ async function completeJob(jobId, userId) {
 
   if (!job) throw new AppError('Job not found', 404);
   if (job.userId !== userId) throw new AppError('Only the job owner can complete this job', 403);
-  if (job.status !== 'ASSIGNED') throw new AppError('Only assigned jobs can be completed', 400);
+  if (job.status !== 'IN_PROGRESS' && job.status !== 'ASSIGNED') {
+    throw new AppError('Only in-progress or assigned jobs can be completed', 400);
+  }
 
   const updated = await prisma.job.update({
     where: { id: jobId },
@@ -89,15 +108,15 @@ async function cancelJob(jobId, userId) {
   return updated;
 }
 
-async function applyToJob({ jobId, workerId, message }) {
+async function applyToJob({ jobId, applicantId, message }) {
   const job = await prisma.job.findUnique({ where: { id: jobId } });
 
   if (!job) throw new AppError('Job not found', 404);
   if (job.status !== 'OPEN') throw new AppError('This job is no longer accepting applications', 400);
-  if (job.userId === workerId) throw new AppError('You cannot apply to your own job', 400);
+  if (job.userId === applicantId) throw new AppError('You cannot apply to your own job', 400);
 
   return prisma.application.create({
-    data: { jobId, workerId, message },
+    data: { jobId, applicantId, message },
     include: {
       job: { select: { id: true, title: true } },
     },
@@ -114,7 +133,7 @@ async function getApplications(jobId, userId) {
   return prisma.application.findMany({
     where: { jobId },
     include: {
-      worker: {
+      applicant: {
         select: { id: true, firstName: true, lastName: true, phone: true, skills: true },
       },
     },
@@ -123,12 +142,12 @@ async function getApplications(jobId, userId) {
 }
 
 /**
- * FIXED: Uses a Prisma transaction to prevent race conditions.
+ * Uses a Prisma transaction to prevent race conditions.
  * When accepting an application:
  *  1. Updates the application status
- *  2. Updates the job status to ASSIGNED
+ *  2. Updates the job status to ASSIGNED and sets assignedToId
  *  3. Rejects all other pending applications
- * All three happen atomically — no two accepts can succeed.
+ * All three happen atomically.
  */
 async function updateApplication({ applicationId, jobId, userId, status }) {
   const job = await prisma.job.findUnique({ where: { id: jobId } });
@@ -137,24 +156,21 @@ async function updateApplication({ applicationId, jobId, userId, status }) {
     throw new AppError('Not authorized', 403);
   }
 
-  // Use transaction for atomicity
   const result = await prisma.$transaction(async (tx) => {
     const application = await tx.application.update({
       where: { id: applicationId },
       data: { status },
       include: {
-        worker: { select: { id: true, firstName: true, lastName: true } },
+        applicant: { select: { id: true, firstName: true, lastName: true } },
       },
     });
 
     if (status === 'ACCEPTED') {
-      // Set job to assigned
       await tx.job.update({
         where: { id: jobId },
-        data: { status: 'ASSIGNED' },
+        data: { status: 'ASSIGNED', assignedToId: application.applicantId },
       });
 
-      // Reject all other pending applications atomically
       await tx.application.updateMany({
         where: {
           jobId,
@@ -164,7 +180,7 @@ async function updateApplication({ applicationId, jobId, userId, status }) {
         data: { status: 'REJECTED' },
       });
 
-      logger.info({ jobId, applicationId, workerId: application.workerId }, 'Application accepted, others rejected');
+      logger.info({ jobId, applicationId, applicantId: application.applicantId }, 'Application accepted, others rejected');
     }
 
     return application;
@@ -174,12 +190,6 @@ async function updateApplication({ applicationId, jobId, userId, status }) {
 }
 
 module.exports = {
-  createJob,
-  listJobs,
-  getJobById,
-  completeJob,
-  cancelJob,
-  applyToJob,
-  getApplications,
-  updateApplication,
+  createJob, listJobs, getJobById, startJob, completeJob, cancelJob,
+  applyToJob, getApplications, updateApplication,
 };

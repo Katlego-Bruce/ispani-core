@@ -2,7 +2,7 @@ const express = require('express');
 const { z } = require('zod');
 const router = express.Router();
 const usersController = require('./users.controller');
-const { authenticate, authorize } = require('../../middleware/auth');
+const { authenticate } = require('../../middleware/auth');
 const { validate } = require('../../middleware/validate');
 
 const updateProfileSchema = z.object({
@@ -29,8 +29,8 @@ router.get('/', authenticate, usersController.listUsers);
 router.get('/:id', authenticate, usersController.getUserById);
 router.patch('/me', authenticate, validate(updateProfileSchema), usersController.updateProfile);
 
-// Worker location & status endpoints
-router.patch('/location', authenticate, authorize('WORKER'), validate(updateLocationSchema), usersController.updateLocation);
-router.patch('/status', authenticate, authorize('WORKER'), validate(setStatusSchema), usersController.setOnlineStatus);
+// Location & status endpoints — any authenticated user
+router.patch('/location', authenticate, validate(updateLocationSchema), usersController.updateLocation);
+router.patch('/status', authenticate, validate(setStatusSchema), usersController.setOnlineStatus);
 
 module.exports = router;
