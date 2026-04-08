@@ -32,7 +32,6 @@ async function register(data) {
       phone: data.phone,
       email: data.email || null,
       password: hashedPassword,
-      role: data.role,
       skills: data.skills || [],
     },
     select: {
@@ -41,15 +40,14 @@ async function register(data) {
       lastName: true,
       phone: true,
       email: true,
-      role: true,
       skills: true,
       createdAt: true,
     },
   });
 
-  const token = generateToken({ id: user.id, role: user.role });
+  const token = generateToken({ id: user.id });
 
-  logger.info({ userId: user.id, role: user.role }, 'User registered');
+  logger.info({ userId: user.id }, 'User registered');
   return { user, token };
 }
 
@@ -67,7 +65,7 @@ async function login({ phone, password }) {
     throw new AppError('Invalid credentials', 401);
   }
 
-  const token = generateToken({ id: user.id, role: user.role });
+  const token = generateToken({ id: user.id });
 
   logger.info({ userId: user.id }, 'User logged in');
   return {
@@ -77,7 +75,6 @@ async function login({ phone, password }) {
       lastName: user.lastName,
       phone: user.phone,
       email: user.email,
-      role: user.role,
       skills: user.skills,
     },
     token,
