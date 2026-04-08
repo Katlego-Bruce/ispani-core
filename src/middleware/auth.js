@@ -21,7 +21,6 @@ async function authenticate(req, res, next) {
         lastName: true,
         phone: true,
         email: true,
-        role: true,
         skills: true,
         location: true,
       },
@@ -39,13 +38,4 @@ async function authenticate(req, res, next) {
   }
 }
 
-function authorize(...roles) {
-  return (req, res, next) => {
-    if (!roles.includes(req.user.role)) {
-      return res.status(403).json({ error: 'Insufficient permissions' });
-    }
-    next();
-  };
-}
-
-module.exports = { authenticate, authorize };
+module.exports = { authenticate };
