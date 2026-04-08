@@ -23,11 +23,22 @@ async function authenticate(req, res, next) {
         email: true,
         skills: true,
         location: true,
+        isAdmin: true,
+        isSuspended: true,
+        isBanned: true,
       },
     });
 
     if (!user) {
       return res.status(401).json({ error: 'User not found' });
+    }
+
+    if (user.isBanned) {
+      return res.status(403).json({ error: 'Account has been banned' });
+    }
+
+    if (user.isSuspended) {
+      return res.status(403).json({ error: 'Account is suspended' });
     }
 
     req.user = user;
