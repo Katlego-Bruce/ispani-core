@@ -11,6 +11,8 @@ const createJobSchema = z.object({
   budget: z.number().positive('Budget must be a positive number'),
   location: z.string().min(1, 'Location is required'),
   category: z.string().optional(),
+  latitude: z.number().min(-90).max(90).optional(),
+  longitude: z.number().min(-180).max(180).optional(),
 });
 
 // Job CRUD
