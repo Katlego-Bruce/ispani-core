@@ -10,14 +10,14 @@ async function createPayment(jobId, clientId) {
   if (job.userId !== clientId) throw new AppError('Only the job owner can create a payment', 403);
 
   const amount = parseFloat(job.budget);
-  const serviceFee = Math.round(amount * SERVICE_FEE_PERCENT) / 100;
-  const workerPayout = amount - serviceFee;
+  const serviceFee = Math.round((amount * SERVICE_FEE_PERCENT / 100) * 100) / 100;
+  const workerPayout = Math.round((amount - serviceFee) * 100) / 100;
 
   const payment = await prisma.payment.create({
     data: { amount, serviceFee, workerPayout, jobId, clientId, status: 'HELD', heldAt: new Date() },
   });
 
-  logger.info({ jobId, amount, serviceFee }, 'Payment created and held in escrow');
+  logger.info({ jobId, amount, serviceFee, workerPayout }, 'Payment created and held in escrow');
   return payment;
 }
 
@@ -33,7 +33,7 @@ async function releasePayment(paymentId, clientId) {
     data: { status: 'RELEASED', releasedAt: new Date(), workerId: payment.job.assignedToId },
   });
 
-  logger.info({ paymentId, workerId: payment.job.assignedToId }, 'Payment released to worker');
+  logger.info({ paymentId, workerId: payment.job.assignedToId }, 'Payment released');
   return updated;
 }
 
