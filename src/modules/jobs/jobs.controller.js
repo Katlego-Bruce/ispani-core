@@ -29,6 +29,11 @@ const getJobById = asyncHandler(async (req, res) => {
   res.json({ data: job });
 });
 
+const startJob = asyncHandler(async (req, res) => {
+  const job = await jobsService.startJob(req.params.id, req.user.id);
+  res.json({ message: 'Job started', data: job });
+});
+
 const completeJob = asyncHandler(async (req, res) => {
   const job = await jobsService.completeJob(req.params.id, req.user.id);
   res.json({ message: 'Job marked as completed', data: job });
@@ -42,7 +47,7 @@ const cancelJob = asyncHandler(async (req, res) => {
 const applyToJob = asyncHandler(async (req, res) => {
   const application = await jobsService.applyToJob({
     jobId: req.params.id,
-    workerId: req.user.id,
+    applicantId: req.user.id,
     message: req.body.message,
   });
   res.status(201).json({ message: 'Application submitted', data: application });
@@ -70,6 +75,6 @@ const updateApplication = asyncHandler(async (req, res) => {
 });
 
 module.exports = {
-  createJob, listJobs, getJobById, completeJob, cancelJob,
+  createJob, listJobs, getJobById, startJob, completeJob, cancelJob,
   applyToJob, getApplications, updateApplication,
 };
