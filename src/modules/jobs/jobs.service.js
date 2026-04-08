@@ -10,6 +10,8 @@ async function createJob(data) {
       budget: data.budget,
       location: data.location,
       category: data.category,
+      latitude: data.latitude,
+      longitude: data.longitude,
       userId: data.userId,
     },
     include: {
