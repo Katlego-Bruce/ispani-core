@@ -123,7 +123,7 @@ ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
 # ── RATE LIMITING (sensible defaults) ─────────────────────
 RATE_LIMIT_WINDOW_MS=60000
 RATE_LIMIT_MAX=100
-AUTH_RATE_LIMIT_WINDOW_MS=60000
+AUTH_RATE_LIMIT_WINDOW_MS=900000
 AUTH_RATE_LIMIT_MAX=5
 
 # ── OPTIONAL INTEGRATIONS (skip for basic local dev) ──────
