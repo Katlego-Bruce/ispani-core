@@ -29,6 +29,8 @@ jobs:
       DATABASE_URL: postgresql://test:test@localhost:5432/ispani_test?schema=public
       JWT_SECRET: test-secret-at-least-32-chars-long-ok
       NODE_ENV: test
+      RATE_LIMIT_MAX: 10000
+      AUTH_RATE_LIMIT_MAX: 10000
 
     steps:
       - uses: actions/checkout@v4
