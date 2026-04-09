@@ -39,11 +39,12 @@ async function register(data) {
       phone: true,
       email: true,
       skills: true,
+      isAdmin: true,
       createdAt: true,
     },
   });
 
-  const token = generateToken({ id: user.id });
+  const token = generateToken({ id: user.id, isAdmin: user.isAdmin });
 
   logger.info({ userId: user.id }, 'User registered');
   return { user, token };
@@ -58,12 +59,20 @@ async function login({ phone, password }) {
     throw new AppError('Invalid credentials', 401);
   }
 
+  // Check account status before verifying password
+  if (user.isBanned) {
+    throw new AppError('Account has been banned. Contact support.', 403);
+  }
+  if (user.isSuspended) {
+    throw new AppError('Account is suspended. Contact support.', 403);
+  }
+
   const isMatch = await argon2.verify(user.password, password);
   if (!isMatch) {
     throw new AppError('Invalid credentials', 401);
   }
 
-  const token = generateToken({ id: user.id });
+  const token = generateToken({ id: user.id, isAdmin: user.isAdmin });
 
   logger.info({ userId: user.id }, 'User logged in');
   return {
@@ -74,6 +83,7 @@ async function login({ phone, password }) {
       phone: user.phone,
       email: user.email,
       skills: user.skills,
+      isAdmin: user.isAdmin,
     },
     token,
   };
