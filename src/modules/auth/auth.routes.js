@@ -3,10 +3,8 @@ const { z } = require('zod');
 const rateLimit = require('express-rate-limit');
 const router = express.Router();
 const authController = require('./auth.controller');
-const otpService = require('./otp.service');
 const { authenticate } = require('../../middleware/auth');
 const { validate } = require('../../middleware/validate');
-const asyncHandler = require('../../utils/asyncHandler');
 const config = require('../../config');
 
 const authLimiter = rateLimit({
@@ -17,36 +15,36 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// SA phone number regex: +27XXXXXXXXX or 0XXXXXXXXX (mobile prefixes 06x, 07x, 08x)
+const SA_PHONE_REGEX = /^(\+27|0)[6-8]\d{8}$/;
+
 const registerSchema = z.object({
   firstName: z.string().min(2, 'First name must be at least 2 characters'),
   lastName: z.string().min(2, 'Last name must be at least 2 characters'),
-  phone: z.string().min(10, 'Phone must be at least 10 digits').regex(/^[0-9+]+$/, 'Invalid phone format'),
+  phone: z.string().regex(SA_PHONE_REGEX, 'Invalid SA phone number. Use +27XXXXXXXXX or 0XXXXXXXXX format'),
   email: z.string().email('Invalid email format').optional(),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
+  password: z.string()
+    .min(8, 'Password must be at least 8 characters')
+    .regex(
+      /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&#^()_+\-=])/,
+      'Password must contain uppercase, lowercase, number, and special character'
+    ),
   skills: z.array(z.string()).optional().default([]),
 });
 
 const loginSchema = z.object({
-  phone: z.string().min(1, 'Phone is required'),
+  phone: z.string().regex(SA_PHONE_REGEX, 'Invalid SA phone number format'),
   password: z.string().min(1, 'Password is required'),
 });
-
-const sendOtpSchema = z.object({ phone: z.string().min(10) });
-const verifyOtpSchema = z.object({ phone: z.string().min(10), code: z.string().length(6) });
 
 // Password auth
 router.post('/register', authLimiter, validate(registerSchema), authController.register);
 router.post('/login', authLimiter, validate(loginSchema), authController.login);
 router.get('/me', authenticate, authController.getMe);
 
-// OTP auth
-router.post('/send-otp', authLimiter, validate(sendOtpSchema), asyncHandler(async (req, res) => {
-  const result = await otpService.requestOtp(req.body.phone);
-  res.json({ message: result.message, data: { expiresInSeconds: result.expiresInSeconds } });
-}));
-router.post('/verify-otp', authLimiter, validate(verifyOtpSchema), asyncHandler(async (req, res) => {
-  const result = await otpService.verifyOtp(req.body.phone, req.body.code);
-  res.json({ message: 'OTP verified', data: result });
-}));
+// OTP auth - DEFERRED FOR MVP (Phase 3)
+// See issue #35 for re-activation plan
+// router.post('/send-otp', ...);
+// router.post('/verify-otp', ...);
 
 module.exports = router;
