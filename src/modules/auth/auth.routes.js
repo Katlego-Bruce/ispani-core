@@ -7,13 +7,16 @@ const { authenticate } = require('../../middleware/auth');
 const { validate } = require('../../middleware/validate');
 const config = require('../../config');
 
-const authLimiter = rateLimit({
-  windowMs: config.AUTH_RATE_LIMIT_WINDOW_MS,
-  max: config.AUTH_RATE_LIMIT_MAX,
-  message: { error: 'Too many attempts. Please try again later.' },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
+// Skip rate limiter in test environment to prevent 429 errors in E2E tests (#28)
+const authLimiter = process.env.NODE_ENV === 'test'
+  ? (req, res, next) => next()
+  : rateLimit({
+      windowMs: config.AUTH_RATE_LIMIT_WINDOW_MS,
+      max: config.AUTH_RATE_LIMIT_MAX,
+      message: { error: 'Too many attempts. Please try again later.' },
+      standardHeaders: true,
+      legacyHeaders: false,
+    });
 
 const SA_PHONE_REGEX = /^(\+27|0)[6-8]\d{8}$/;
 const PASSWORD_REGEX = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&#^()_+\-=])/;
@@ -27,6 +30,7 @@ const registerSchema = z.object({
     .min(8, 'Password must be at least 8 characters')
     .regex(PASSWORD_REGEX, 'Password must contain uppercase, lowercase, number, and special character'),
   skills: z.array(z.string()).optional().default([]),
+  consent: z.literal(true, { errorMap: () => ({ message: 'POPIA consent is required to register' }) }),
 });
 
 const loginSchema = z.object({
@@ -34,24 +38,23 @@ const loginSchema = z.object({
   password: z.string().min(1, 'Password is required'),
 });
 
-const refreshSchema = z.object({
-  refreshToken: z.string().min(1, 'Refresh token is required'),
-});
-
+const refreshSchema = z.object({ refreshToken: z.string().min(1, 'Refresh token is required') });
 const changePasswordSchema = z.object({
   currentPassword: z.string().min(1, 'Current password is required'),
-  newPassword: z.string()
-    .min(8, 'New password must be at least 8 characters')
-    .regex(PASSWORD_REGEX, 'Password must contain uppercase, lowercase, number, and special character'),
+  newPassword: z.string().min(8).regex(PASSWORD_REGEX, 'Password must contain uppercase, lowercase, number, and special character'),
 });
-
-const logoutSchema = z.object({
-  refreshToken: z.string().min(1, 'Refresh token is required'),
+const logoutSchema = z.object({ refreshToken: z.string().min(1, 'Refresh token is required') });
+const requestResetSchema = z.object({ phone: z.string().regex(SA_PHONE_REGEX, 'Invalid SA phone number format') });
+const resetPasswordSchema = z.object({
+  token: z.string().min(1, 'Reset token is required'),
+  newPassword: z.string().min(8).regex(PASSWORD_REGEX, 'Password must contain uppercase, lowercase, number, and special character'),
 });
 
 router.post('/register', authLimiter, validate(registerSchema), authController.register);
 router.post('/login', authLimiter, validate(loginSchema), authController.login);
 router.post('/refresh', authLimiter, validate(refreshSchema), authController.refresh);
+router.post('/request-reset', authLimiter, validate(requestResetSchema), authController.requestPasswordReset);
+router.post('/reset-password', authLimiter, validate(resetPasswordSchema), authController.resetPassword);
 
 router.get('/me', authenticate, authController.getMe);
 router.post('/change-password', authenticate, validate(changePasswordSchema), authController.changePassword);
