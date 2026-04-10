@@ -1,6 +1,6 @@
 {
   "name": "ispani-core",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "ISPANI - South African Digital Labour Marketplace Backend API",
   "main": "src/server.js",
   "scripts": {
@@ -15,12 +15,7 @@
     "prisma:deploy": "prisma migrate deploy",
     "prisma:seed": "node prisma/seed.js"
   },
-  "keywords": [
-    "ispani",
-    "labour",
-    "marketplace",
-    "south-africa"
-  ],
+  "keywords": ["ispani", "labour", "marketplace", "south-africa"],
   "author": "",
   "license": "ISC",
   "dependencies": {
@@ -36,9 +31,7 @@
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
     "pino": "^9.14.0",
-    "pino-http": "^9.0.0",
     "twilio": "^5.0.0",
-    "uuid": "^11.1.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {
