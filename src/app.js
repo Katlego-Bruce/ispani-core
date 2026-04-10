@@ -22,7 +22,6 @@ const matchingController = require('./modules/matching/matching.controller');
 
 const app = express();
 
-// ─── Security ──────────────────────────────────────────
 app.use(helmet());
 app.use(cors({
   origin: config.ALLOWED_ORIGINS,
@@ -31,26 +30,24 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
-// ─── Parsing ───────────────────────────────────────────
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
-
-// ─── Request ID & Logging ──────────────────────────────
 app.use(requestId);
 app.use(morgan(':method :url :status :response-time ms - :req[x-request-id]', {
   stream: { write: (msg) => logger.info(msg.trim()) },
 }));
 
-// ─── Rate Limiting ─────────────────────────────────────
-app.use(rateLimit({
-  windowMs: config.RATE_LIMIT_WINDOW_MS,
-  max: config.RATE_LIMIT_MAX,
-  message: { error: 'Too many requests, please try again later' },
-  standardHeaders: true,
-  legacyHeaders: false,
-}));
+// Skip rate limiting in test environment to prevent 429 errors in E2E tests
+if (process.env.NODE_ENV !== 'test') {
+  app.use(rateLimit({
+    windowMs: config.RATE_LIMIT_WINDOW_MS,
+    max: config.RATE_LIMIT_MAX,
+    message: { error: 'Too many requests, please try again later' },
+    standardHeaders: true,
+    legacyHeaders: false,
+  }));
+}
 
-// ─── Health Check ──────────────────────────────────────
 app.get('/health', async (req, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
@@ -66,7 +63,6 @@ app.get('/health', async (req, res) => {
   }
 });
 
-// ─── API Routes (versioned) ────────────────────────────
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/jobs', jobRoutes);
@@ -75,15 +71,12 @@ app.use('/api/v1/reviews', reviewRoutes);
 app.use('/api/v1/payments', paymentRoutes);
 app.use('/api/v1/admin', adminRoutes);
 
-// Broadcast endpoint — ownership enforced at service layer
 app.post('/api/v1/jobs/:id/broadcast', authenticate, matchingController.broadcastJob);
 
-// ─── 404 ───────────────────────────────────────────────
 app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
-// ─── Error Handler ─────────────────────────────────────
 app.use(errorHandler);
 
 module.exports = app;
