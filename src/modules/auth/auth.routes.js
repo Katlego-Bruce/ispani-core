@@ -16,7 +16,7 @@ const authLimiter = rateLimit({
 });
 
 // SA phone number regex: +27XXXXXXXXX or 0XXXXXXXXX (mobile prefixes 06x, 07x, 08x)
-const SA_PHONE_REGEX = /^(\+27|0)[6-8]\d{8}$/;
+const SA_PHONE_REGEX = /^(\\+27|0)[6-8]\\d{8}$/;
 
 const registerSchema = z.object({
   firstName: z.string().min(2, 'First name must be at least 2 characters'),
@@ -26,7 +26,7 @@ const registerSchema = z.object({
   password: z.string()
     .min(8, 'Password must be at least 8 characters')
     .regex(
-      /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&#^()_+\-=])/,
+      /^(?=.*[A-Z])(?=.*[a-z])(?=.*\\d)(?=.*[@$!%*?&#^()_+\\-=])/,
       'Password must contain uppercase, lowercase, number, and special character'
     ),
   skills: z.array(z.string()).optional().default([]),
@@ -41,10 +41,5 @@ const loginSchema = z.object({
 router.post('/register', authLimiter, validate(registerSchema), authController.register);
 router.post('/login', authLimiter, validate(loginSchema), authController.login);
 router.get('/me', authenticate, authController.getMe);
-
-// OTP auth - DEFERRED FOR MVP (Phase 3)
-// See issue #35 for re-activation plan
-// router.post('/send-otp', ...);
-// router.post('/verify-otp', ...);
 
 module.exports = router;

@@ -9,6 +9,16 @@ async function submitReview({ reviewerId, revieweeId, jobId, rating, comment }) 
   const job = await prisma.job.findUnique({ where: { id: jobId } });
   if (!job || job.status !== 'COMPLETED') throw new AppError('Can only review completed jobs', 400);
 
+  // Verify reviewer was a participant in this job (client or assigned worker)
+  if (reviewerId !== job.userId && reviewerId !== job.assignedToId) {
+    throw new AppError('Only job participants can submit reviews', 403);
+  }
+
+  // Verify reviewee was also a participant
+  if (revieweeId !== job.userId && revieweeId !== job.assignedToId) {
+    throw new AppError('Can only review other job participants', 400);
+  }
+
   const review = await prisma.review.create({
     data: { reviewerId, revieweeId, jobId, rating, comment },
   });

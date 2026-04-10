@@ -66,7 +66,16 @@ async function completeJob(jobId, userId) {
   }
 
   const updated = await prisma.job.update({ where: { id: jobId }, data: { status: 'COMPLETED' } });
-  logger.info({ jobId }, 'Job completed');
+
+  // Increment completedJobs counter for the assigned worker
+  if (job.assignedToId) {
+    await prisma.user.update({
+      where: { id: job.assignedToId },
+      data: { completedJobs: { increment: 1 } },
+    });
+  }
+
+  logger.info({ jobId, assignedToId: job.assignedToId }, 'Job completed');
   return updated;
 }
 
@@ -77,6 +86,13 @@ async function cancelJob(jobId, userId) {
   if (job.status === 'COMPLETED') throw new AppError('Completed jobs cannot be cancelled', 400);
 
   const updated = await prisma.job.update({ where: { id: jobId }, data: { status: 'CANCELLED' } });
+
+  // Increment cancelledJobs counter for the job owner
+  await prisma.user.update({
+    where: { id: userId },
+    data: { cancelledJobs: { increment: 1 } },
+  });
+
   logger.info({ jobId }, 'Job cancelled');
   return updated;
 }
@@ -150,6 +166,12 @@ async function updateApplication({ applicationId, jobId, userId, status }) {
         await tx.application.updateMany({
           where: { jobId, id: { not: applicationId }, status: 'PENDING' },
           data: { status: 'REJECTED' },
+        });
+
+        // Increment totalJobsAccepted for the accepted applicant
+        await tx.user.update({
+          where: { id: application.applicantId },
+          data: { totalJobsAccepted: { increment: 1 } },
         });
 
         logger.info({ jobId, applicationId, applicantId: application.applicantId }, 'Application accepted, others rejected');
