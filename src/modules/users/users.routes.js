@@ -25,6 +25,8 @@ const setStatusSchema = z.object({ isOnline: z.boolean() });
 const fcmTokenSchema = z.object({ fcmToken: z.string().min(1) });
 
 router.get('/', authenticate, usersController.listUsers);
+router.get('/me/applications', authenticate, usersController.getMyApplications);
+router.delete('/me', authenticate, usersController.deleteAccount);
 router.get('/:id', authenticate, usersController.getUserById);
 router.patch('/me', authenticate, validate(updateProfileSchema), usersController.updateProfile);
 router.patch('/location', authenticate, validate(updateLocationSchema), usersController.updateLocation);
