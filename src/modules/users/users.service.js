@@ -38,18 +38,10 @@ async function updateProfile(userId, data) {
   });
 }
 
-/**
- * Update user's GPS location and mark as online.
- * Direct update — Prisma throws P2025 if user doesn't exist (caught by error handler).
- */
 async function updateLocation(userId, { latitude, longitude }) {
   const updated = await prisma.user.update({
     where: { id: userId },
-    data: {
-      latitude, longitude,
-      lastLocationUpdateAt: new Date(),
-      isOnline: true,
-    },
+    data: { latitude, longitude, lastLocationUpdateAt: new Date(), isOnline: true },
     select: USER_SELECT,
   });
   logger.info({ userId, latitude, longitude }, 'User location updated');
@@ -61,12 +53,7 @@ async function setOnlineStatus(userId, isOnline) {
     where: { id: userId },
     data: {
       isOnline,
-      // When going offline, clear location data for privacy
-      ...(!isOnline && {
-        lastLocationUpdateAt: null,
-        latitude: null,
-        longitude: null,
-      }),
+      ...(!isOnline && { lastLocationUpdateAt: null, latitude: null, longitude: null }),
     },
     select: USER_SELECT,
   });
@@ -80,4 +67,42 @@ async function updateFcmToken(userId, fcmToken) {
   });
 }
 
-module.exports = { listUsers, getUserById, updateProfile, updateLocation, setOnlineStatus, updateFcmToken };
+async function getMyApplications(userId, { status, page = 1, limit = 20 } = {}) {
+  const where = { applicantId: userId };
+  if (status) where.status = status;
+  const skip = (page - 1) * limit;
+  const [applications, total] = await Promise.all([
+    prisma.application.findMany({
+      where, skip, take: limit,
+      include: {
+        job: {
+          select: {
+            id: true, title: true, location: true, budget: true, status: true,
+            user: { select: { id: true, firstName: true, lastName: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    }),
+    prisma.application.count({ where }),
+  ]);
+  return { applications, pagination: { total, page, limit, totalPages: Math.ceil(total / limit) } };
+}
+
+async function deleteAccount(userId) {
+  await prisma.$transaction([
+    prisma.refreshToken.deleteMany({ where: { userId } }),
+    prisma.user.update({
+      where: { id: userId },
+      data: {
+        deletedAt: new Date(),
+        isOnline: false, fcmToken: null,
+        latitude: null, longitude: null, lastLocationUpdateAt: null,
+      },
+    }),
+  ]);
+  logger.info({ userId }, 'Account soft-deleted (POPIA)');
+  return { message: 'Account deleted successfully' };
+}
+
+module.exports = { listUsers, getUserById, updateProfile, updateLocation, setOnlineStatus, updateFcmToken, getMyApplications, deleteAccount };
