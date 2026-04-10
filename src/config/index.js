@@ -6,7 +6,8 @@ module.exports = {
 
   // No fallback — env.js validates these exist before server starts
   JWT_SECRET: process.env.JWT_SECRET,
-  JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '7d',
+  ACCESS_TOKEN_EXPIRES_IN: process.env.ACCESS_TOKEN_EXPIRES_IN || '15m',
+  REFRESH_TOKEN_EXPIRES_IN_DAYS: parseInt(process.env.REFRESH_TOKEN_EXPIRES_IN_DAYS, 10) || 7,
   DATABASE_URL: process.env.DATABASE_URL,
 
   // CORS
