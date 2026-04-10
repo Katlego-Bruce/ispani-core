@@ -3,14 +3,12 @@ const AppError = require('../../utils/AppError');
 const logger = require('../../services/logger');
 
 function requireAdmin(req, res, next) {
-  if (!req.user.isAdmin) {
-    return res.status(403).json({ error: 'Admin access required' });
-  }
+  if (!req.user.isAdmin) return res.status(403).json({ error: 'Admin access required' });
   next();
 }
 
 async function listUsers({ page = 1, limit = 20, search } = {}) {
-  const where = {};
+  const where = { deletedAt: null };
   if (search) {
     where.OR = [
       { firstName: { contains: search, mode: 'insensitive' } },
@@ -55,10 +53,8 @@ async function getStats() {
     prisma.user.count({ where: { isOnline: true, deletedAt: null } }),
     prisma.job.groupBy({ by: ['status'], _count: { status: true } }),
   ]);
-
   const statusCounts = {};
   jobsByStatus.forEach((s) => { statusCounts[s.status] = s._count.status; });
-
   return { totalUsers, totalJobs, activeUsersNow: activeUsers, jobsByStatus: statusCounts };
 }
 
