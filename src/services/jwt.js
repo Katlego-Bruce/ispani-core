@@ -1,9 +1,10 @@
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const config = require('../config');
 
-function generateToken(payload) {
+function generateAccessToken(payload) {
   return jwt.sign(payload, config.JWT_SECRET, {
-    expiresIn: config.JWT_EXPIRES_IN,
+    expiresIn: config.ACCESS_TOKEN_EXPIRES_IN,
   });
 }
 
@@ -11,4 +12,8 @@ function verifyToken(token) {
   return jwt.verify(token, config.JWT_SECRET);
 }
 
-module.exports = { generateToken, verifyToken };
+function generateRefreshToken() {
+  return crypto.randomBytes(40).toString('hex');
+}
+
+module.exports = { generateAccessToken, verifyToken, generateRefreshToken };
