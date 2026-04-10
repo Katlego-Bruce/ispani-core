@@ -52,6 +52,7 @@ model User {
   cancelledJobs        Int       @default(0)
   totalJobsAccepted    Int       @default(0)
   userLevel            Int       @default(1)
+  popiaConsentAt       DateTime?
   deletedAt            DateTime?
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
@@ -119,18 +120,6 @@ model Application {
   @@index([status])
 }
 
-model Otp {
-  id        String   @id @default(uuid())
-  phone     String
-  code      String
-  attempts  Int      @default(0)
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-
-  @@index([phone])
-  @@index([expiresAt])
-}
-
 model Review {
   id         String   @id @default(uuid())
   rating     Int
@@ -179,5 +168,18 @@ model RefreshToken {
   createdAt DateTime @default(now())
 
   @@index([userId])
+  @@index([expiresAt])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  phone     String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([phone])
+  @@index([token])
   @@index([expiresAt])
 }
