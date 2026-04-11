@@ -4,13 +4,15 @@ const { prisma } = require('../../src/services/prisma');
 describe('Applications', () => {
   let ownerToken, appToken, app2Token, jobId;
   beforeEach(async () => {
-    await prisma.application.deleteMany(); await prisma.job.deleteMany(); await prisma.user.deleteMany();
+    await prisma.application.deleteMany(); await prisma.job.deleteMany();
+    await prisma.refreshToken.deleteMany(); await prisma.passwordResetToken.deleteMany();
+    await prisma.user.deleteMany();
     const o = await request(app).post('/api/v1/auth/register').send({ firstName:'Owner',lastName:'User',phone:'0711111111',password:'Password123!',skills:[],consent:true });
-    ownerToken = o.body.data.token;
+    ownerToken = o.body.data.accessToken;
     const a1 = await request(app).post('/api/v1/auth/register').send({ firstName:'App',lastName:'One',phone:'0722222222',password:'Password123!',skills:['plumbing'],consent:true });
-    appToken = a1.body.data.token;
+    appToken = a1.body.data.accessToken;
     const a2 = await request(app).post('/api/v1/auth/register').send({ firstName:'App',lastName:'Two',phone:'0733333333',password:'Password123!',skills:[],consent:true });
-    app2Token = a2.body.data.token;
+    app2Token = a2.body.data.accessToken;
     const j = await request(app).post('/api/v1/jobs').set('Authorization',`Bearer ${ownerToken}`).send({ title:'Fix',description:'Fix the broken pipe please',budget:300,location:'CT',category:'plumbing' });
     jobId = j.body.data.id;
   });
