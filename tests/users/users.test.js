@@ -5,7 +5,7 @@ describe('Users Module', () => {
   let token, userId;
   beforeEach(async () => {
     await prisma.application.deleteMany(); await prisma.job.deleteMany(); await prisma.user.deleteMany();
-    const r = await request(app).post('/api/v1/auth/register').send({ firstName:'T',lastName:'U',phone:'0712345678',password:'password123',skills:['carpentry'],popiaConsent:true });
+    const r = await request(app).post('/api/v1/auth/register').send({ firstName:'Test',lastName:'User',phone:'0712345678',password:'Password123!',skills:['carpentry'],consent:true });
     token = r.body.data.token; userId = r.body.data.user.id;
   });
   it('should list users', async () => {
