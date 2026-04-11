@@ -6,9 +6,11 @@ describe('Jobs Module', () => {
   const user = { firstName: 'Job', lastName: 'Creator', phone: '0711111111', password: 'Password123!', skills: [], consent: true };
   const job = { title: 'Fix Kitchen Sink', description: 'Need a plumber to fix a leaking kitchen sink urgently', budget: 500, location: 'Johannesburg', category: 'plumbing' };
   beforeEach(async () => {
-    await prisma.application.deleteMany(); await prisma.job.deleteMany(); await prisma.user.deleteMany();
+    await prisma.application.deleteMany(); await prisma.job.deleteMany();
+    await prisma.refreshToken.deleteMany(); await prisma.passwordResetToken.deleteMany();
+    await prisma.user.deleteMany();
     const res = await request(app).post('/api/v1/auth/register').send(user);
-    token = res.body.data.token; userId = res.body.data.user.id;
+    token = res.body.data.accessToken; userId = res.body.data.user.id;
   });
   describe('POST /api/v1/jobs', () => {
     it('should create a job', async () => {
@@ -36,7 +38,7 @@ describe('Jobs Module', () => {
     it('should reject non-owner cancel', async () => {
       const cr = await request(app).post('/api/v1/jobs').set('Authorization', `Bearer ${token}`).send(job);
       const other = await request(app).post('/api/v1/auth/register').send({ firstName: 'Other', lastName: 'User', phone: '0722222222', password: 'Password123!', skills: [], consent: true });
-      const res = await request(app).patch(`/api/v1/jobs/${cr.body.data.id}/cancel`).set('Authorization', `Bearer ${other.body.data.token}`);
+      const res = await request(app).patch(`/api/v1/jobs/${cr.body.data.id}/cancel`).set('Authorization', `Bearer ${other.body.data.accessToken}`);
       expect(res.status).toBe(403);
     });
   });
