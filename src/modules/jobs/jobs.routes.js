@@ -6,9 +6,9 @@ const { authenticate } = require('../../middleware/auth');
 const { validate } = require('../../middleware/validate');
 
 const createJobSchema = z.object({
-  title: z.string().min(3, 'Title must be at least 3 characters'),
-  description: z.string().min(10, 'Description must be at least 10 characters'),
-  budget: z.number().positive('Budget must be a positive number'),
+  title: z.string().min(3, 'Title must be at least 3 characters').max(100, 'Title must be under 100 characters'),
+  description: z.string().min(20, 'Description must be at least 20 characters').max(2000, 'Description must be under 2000 characters'),
+  budget: z.number().positive('Budget must be a positive number').max(100000, 'Budget cannot exceed 100,000'),
   location: z.string().min(1, 'Location is required'),
   category: z.string().optional(),
   latitude: z.number().min(-90).max(90).optional(),
@@ -18,6 +18,7 @@ const createJobSchema = z.object({
 // Job CRUD
 router.post('/', authenticate, validate(createJobSchema), jobsController.createJob);
 router.get('/', jobsController.listJobs);
+router.get('/nearby', jobsController.getNearbyJobs); // NEW: Location-aware feed
 router.get('/:id', jobsController.getJobById);
 
 // Job status management
