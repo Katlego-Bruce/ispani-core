@@ -1,5 +1,5 @@
 {
-  "name": "ispani-core",
+  "name": "@katlego-bruce/ispani-core",
   "version": "2.3.0",
   "description": "ISPANI - South African Digital Labour Marketplace Backend API",
   "main": "src/server.js",
@@ -15,9 +15,21 @@
     "prisma:deploy": "prisma migrate deploy",
     "prisma:seed": "node prisma/seed.js"
   },
-  "keywords": ["ispani", "labour", "marketplace", "south-africa"],
+  "keywords": [
+    "ispani",
+    "labour",
+    "marketplace",
+    "south-africa"
+  ],
   "author": "Katlego-Bruce",
   "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Katlego-Bruce/ispani-core.git"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
   "dependencies": {
     "@prisma/client": "^5.22.0",
     "argon2": "^0.44.0",
@@ -43,5 +55,7 @@
     "prisma": "^5.22.0",
     "supertest": "^7.2.2"
   },
-  "engines": { "node": ">=20.0.0" }
+  "engines": {
+    "node": ">=20.0.0"
+  }
 }
