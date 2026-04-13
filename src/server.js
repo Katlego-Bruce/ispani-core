@@ -44,11 +44,15 @@ process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 // Catch unhandled errors
 process.on('unhandledRejection', (reason) => {
+  console.error('UNHANDLED_REJECTION_REASON:', reason);
+  console.error('UNHANDLED_REJECTION_STACK:', reason?.stack || 'no stack');
   logger.fatal({ err: reason }, 'Unhandled Rejection');
   process.exit(1);
 });
 
 process.on('uncaughtException', (error) => {
+  console.error('UNCAUGHT_EXCEPTION:', error);
+  console.error('UNCAUGHT_EXCEPTION_STACK:', error?.stack || 'no stack');
   logger.fatal({ err: error }, 'Uncaught Exception');
   process.exit(1);
 });
